@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuel Calculator Pro</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <h1>Fuel Calculator Pro</h1>
+            <p>Calculate fuel savings across borders and manage your calculations</p>
+        </header>
+
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="fuel">Fuel Calculator</button>
+            <button class="tab-btn" data-tab="calculator">Scientific Calculator</button>
+            <button class="tab-btn" data-tab="currency">Currency Converter</button>
+        </nav>
+
+        <!-- Fuel Calculator Tab -->
+        <div id="fuel-tab" class="tab-content active">
+            <div class="calculator-grid">
+                <div class="input-section">
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Car Settings</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="form-group">
+                                <label class="form-label">Select Car Model (Optional)</label>
+                                <select id="car-model" class="form-control">
+                                    <option value="">Custom Settings</option>
+                                    <option value="VW Polo (2011)">VW Polo (2011)</option>
+                                    <option value="VW Golf">VW Golf</option>
+                                    <option value="BMW 3 Series">BMW 3 Series</option>
+                                    <option value="Toyota Corolla">Toyota Corolla</option>
+                                    <option value="Ford Focus">Ford Focus</option>
+                                    <option value="Renault Clio">Renault Clio</option>
+                                    <option value="Opel Astra">Opel Astra</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Fuel Consumption (L/100km)</label>
+                                    <input type="number" id="fuel-consumption" class="form-control" value="6.5" step="0.1" min="3" max="15">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Tank Capacity (L)</label>
+                                    <input type="number" id="tank-capacity" class="form-control" value="50" step="1" min="20" max="100">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__header">
+                            <h3>Trip & Fuel Details</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="form-group">
+                                <label class="form-label">Distance to Gas Station (km)</label>
+                                <input type="number" id="distance" class="form-control" step="0.1" min="0" placeholder="20">
+                            </div>
+                            <div class="form-group">
+                                <label for="country-select">Country</label>
+                                <select id="country-select" required>
+                                    <option value="Netherlands">Netherlands</option>
+                                    <option value="Belgium">Belgium</option>
+                                    <option value="Germany">Germany</option>
+                                    <option value="Luxembourg">Luxembourg</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="fuel-price">Fuel Price at Station (€/L)</label>
+                                <div class="input-with-button">
+                                    <input 
+                                        type="number" 
+                                        id="fuel-price" 
+                                        step="0.01" 
+                                        placeholder="1.56"
+                                        required
+                                    />
+                                    <button 
+                                        type="button" 
+                                        id="fetch-live-prices-btn" 
+                                        class="btn-secondary"
+                                        title="Fetch live fuel prices"
+                                    >
+                                        🔄 Get Live Price
+                                    </button>
+                                </div>
+                                <div id="price-cache-status" style="display: none;"></div>
+                                <div id="api-loading" style="display: none;" class="loading-indicator">
+                                    Fetching live prices...
+                                </div>
+                                <div id="api-error" style="display: none;" class="error-message"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Fuel Type</label>
+                                <select id="fuel-type" class="form-control">
+                                    <option value="petrol_95">Petrol 95</option>
+                                    <option value="diesel">Diesel</option>
+                                    <option value="lpg">LPG</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Amount Needed</label>
+                                <div class="amount-controls">
+                                    <label class="radio-label">
+                                        <input type="radio" name="amount-type" value="full" checked>
+                                        Full Tank
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="amount-type" value="custom">
+                                        Custom Amount
+                                    </label>
+                                </div>
+                                <input type="number" id="custom-amount" class="form-control" step="1" min="1" placeholder="Liters" disabled>
+                            </div>
+                            <button id="calculate-btn" class="btn btn--primary btn--full-width">Calculate Savings</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results-section">
+                    <div class="card results-card" id="results-card" style="display: none;">
+                        <div class="card__header">
+                            <h3>Calculation Results</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="result-grid">
+                                <div class="result-item">
+                                    <span class="result-label">Fuel Cost</span>
+                                    <span class="result-value" id="fuel-cost">€0.00</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Travel Cost</span>
+                                    <span class="result-value" id="travel-cost">€0.00</span>
+                                </div>
+                                <div class="result-item">
+                                    <span class="result-label">Total Cost</span>
+                                    <span class="result-value total" id="total-cost">€0.00</span>
+                                </div>
+                                <div class="result-item savings-item">
+                                    <span class="result-label">Savings vs Netherlands</span>
+                                    <span class="result-value savings" id="savings">€0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card comparison-card" id="comparison-card" style="display: none;">
+                        <div class="card__header">
+                            <h3>Country Price Comparison</h3>
+                        </div>
+                        <div class="card__body">
+                            <div class="comparison-table">
+                                <div class="comparison-header">
+                                    <span>Country</span>
+                                    <span>Price/L</span>
+                                    <span>Total Cost</span>
+                                    <span>Savings</span>
+                                </div>
+                                <div id="comparison-rows"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card history-card">
+                        <div class="card__header">
+                            <h3>Recent Calculations</h3>
+                            <button id="clear-history" class="btn btn--outline btn--sm">Clear</button>
+                        </div>
+                        <div class="card__body">
+                            <div id="calculation-history" class="history-list">
+                                <p class="empty-state">No calculations yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scientific Calculator Tab -->
+        <div id="calculator-tab" class="tab-content">
+            <div class="calculator-container">
+                <div class="calculator">
+                    <div class="calculator-display">
+                        <input type="text" id="calc-display" class="calc-input" readonly value="0">
+                    </div>
+                    <div class="calculator-buttons">
+                        <button class="calc-btn memory" data-action="clear-all">AC</button>
+                        <button class="calc-btn memory" data-action="clear">C</button>
+                        <button class="calc-btn memory" data-action="backspace">⌫</button>
+                        <button class="calc-btn operator" data-action="divide">÷</button>
+                        
+                        <button class="calc-btn scientific" data-action="sin">sin</button>
+                        <button class="calc-btn scientific" data-action="cos">cos</button>
+                        <button class="calc-btn scientific" data-action="tan">tan</button>
+                        <button class="calc-btn operator" data-action="multiply">×</button>
+                        
+                        <button class="calc-btn scientific" data-action="log">log</button>
+                        <button class="calc-btn scientific" data-action="ln">ln</button>
+                        <button class="calc-btn scientific" data-action="sqrt">√</button>
+                        <button class="calc-btn operator" data-action="subtract">−</button>
+                        
+                        <button class="calc-btn scientific" data-action="power">x^y</button>
+                        <button class="calc-btn scientific" data-action="pi">π</button>
+                        <button class="calc-btn scientific" data-action="e">e</button>
+                        <button class="calc-btn operator" data-action="add">+</button>
+                        
+                        <button class="calc-btn number" data-number="7">7</button>
+                        <button class="calc-btn number" data-number="8">8</button>
+                        <button class="calc-btn number" data-number="9">9</button>
+                        <button class="calc-btn bracket" data-action="open-bracket">(</button>
+                        
+                        <button class="calc-btn number" data-number="4">4</button>
+                        <button class="calc-btn number" data-number="5">5</button>
+                        <button class="calc-btn number" data-number="6">6</button>
+                        <button class="calc-btn bracket" data-action="close-bracket">)</button>
+                        
+                        <button class="calc-btn number" data-number="1">1</button>
+                        <button class="calc-btn number" data-number="2">2</button>
+                        <button class="calc-btn number" data-number="3">3</button>
+                        <button class="calc-btn memory" data-action="memory-recall">MR</button>
+                        
+                        <button class="calc-btn number zero" data-number="0">0</button>
+                        <button class="calc-btn number" data-action="decimal">.</button>
+                        <button class="calc-btn equals" data-action="equals">=</button>
+                        <button class="calc-btn memory" data-action="memory-store">MS</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Currency Converter Tab -->
+        <div id="currency-tab" class="tab-content">
+            <div class="currency-container">
+                <div class="card">
+                    <div class="card__header">
+                        <h3>Currency Converter</h3>
+                    </div>
+                    <div class="card__body">
+                        <div class="currency-form">
+                            <div class="form-group">
+                                <label class="form-label">Amount</label>
+                                <input type="number" id="currency-amount" class="form-control" step="0.01" min="0" value="1">
+                            </div>
+                            <div class="currency-row">
+                                <div class="form-group">
+                                    <label class="form-label">From</label>
+                                    <select id="currency-from" class="form-control">
+                                        <option value="EUR">EUR (Euro)</option>
+                                        <option value="USD">USD (US Dollar)</option>
+                                        <option value="GBP">GBP (British Pound)</option>
+                                    </select>
+                                </div>
+                                <button id="swap-currencies" class="swap-btn">⇄</button>
+                                <div class="form-group">
+                                    <label class="form-label">To</label>
+                                    <select id="currency-to" class="form-control">
+                                        <option value="USD">USD (US Dollar)</option>
+                                        <option value="EUR">EUR (Euro)</option>
+                                        <option value="GBP">GBP (British Pound)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="conversion-result">
+                                <div class="result-display">
+                                    <span id="conversion-result">1.06 USD</span>
+                                </div>
+                                <div class="exchange-rate">
+                                    <small id="exchange-rate-display">1 EUR = 1.06 USD</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
