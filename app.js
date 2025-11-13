@@ -126,7 +126,95 @@ function initializeFuelCalculator() {
             calculateFuelSavings();
         }
     }, 100);
+    // ---- LIVE FUEL PRICE API INTEGRATION ----
+    const fetchBtn = document.getElementById('fetch-live-prices-btn');
+    const cacheStatusEl = document.getElementById('price-cache-status');
+    const loadingEl = document.getElementById('api-loading');
+    const errorEl = document.getElementById('api-error');
+    const fuelPriceInput = document.getElementById('fuel-price');
+    const countrySelect = document.getElementById('country-select');
+    const fuelTypeSelect = document.getElementById('fuel-type');
+
+    if (fetchBtn) {
+        fetchBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            // Currently backend returns NL averages – guard UX a bit:
+            if (countrySelect && countrySelect.value !== 'Netherlands') {
+                errorEl.textContent = 'Live price API currently supports Netherlands average prices. Please select Netherlands or enter a custom price.';
+                errorEl.style.display = 'block';
+                cacheStatusEl.style.display = 'none';
+                return;
+            }
+
+            // Reset UI states
+            errorEl.style.display = 'none';
+            errorEl.textContent = '';
+            cacheStatusEl.style.display = 'none';
+            loadingEl.style.display = 'block';
+            fetchBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/fuel-prices');
+                if (!res.ok) {
+                    throw new Error(`API responded with status ${res.status}`);
+                }
+
+                const data = await res.json();
+
+                // Map selected fuel type to field from API
+                const fuelType = fuelTypeSelect.value;
+                let pricePerLiter;
+
+                if (fuelType === 'petrol_95') {
+                    pricePerLiter = data.euro95;
+                } else if (fuelType === 'diesel') {
+                    pricePerLiter = data.diesel;
+                } else {
+                    pricePerLiter = data.lpg;
+                }
+
+                if (typeof pricePerLiter !== 'number' || isNaN(pricePerLiter)) {
+                    throw new Error('API returned invalid price data');
+                }
+
+                // Fill input with 3 decimals for precision
+                fuelPriceInput.value = pricePerLiter.toFixed(3);
+
+                // Show cache indicator
+                const status = data.cacheStatus || 'fresh';
+                let message;
+
+                if (status === 'fresh') {
+                    message = `Live CBS price (NL, ${data.date}) – fresh data`;
+                } else if (status === 'cached') {
+                    message = `Live CBS price (NL, ${data.date}) – served from cache`;
+                } else if (status === 'stale') {
+                    message = `Using last cached value (NL, ${data.date}). Live update failed.`;
+                } else {
+                    message = `Average NL price on ${data.date}`;
+                }
+
+                cacheStatusEl.textContent = message;
+                cacheStatusEl.className = 'cache-indicator ' + (status === 'cached' ? 'cached' : 'fresh');
+                cacheStatusEl.style.display = 'inline-block';
+
+                // Recalculate results with new price
+                if (validateInputs()) {
+                    calculateFuelSavings();
+                }
+            } catch (err) {
+                console.error(err);
+                errorEl.textContent = 'Could not fetch live prices. Please enter the price manually.';
+                errorEl.style.display = 'block';
+            } finally {
+                loadingEl.style.display = 'none';
+                fetchBtn.disabled = false;
+            }
+        });
+    }
 }
+
 
 function validateInputs() {
     const distance = parseFloat(document.getElementById('distance').value) || 0;
